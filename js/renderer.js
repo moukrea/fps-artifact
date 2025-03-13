@@ -694,68 +694,56 @@
         }
     }
 
+    // Define the public API early to avoid reference issues
+    MyApp.Renderer = {
+        init: function(canvas, options) {
+            return init(canvas, options);
+        },
+        resize: function() {
+            return resize();
+        },
+        render: function(map, entities, player) {
+            return render(map, entities, player);
+        },
+        setCamera: function(position, pitch, yaw) {
+            try {
+                if (!position) {
+                    console.warn('Invalid camera position provided');
+                    return;
+                }
+                
+                _camera.position.copy(position);
+                _camera.pitch = pitch || 0;
+                _camera.yaw = yaw || 0;
+                
+                // Update camera direction vector
+                _camera.direction = Math3D.eulerToDirection(_camera.pitch, _camera.yaw);
+                
+                // Log successful camera update
+                console.log('Camera position updated:', 
+                    position.x.toFixed(2), 
+                    position.y.toFixed(2), 
+                    position.z.toFixed(2)
+                );
+            } catch (error) {
+                console.error('Error setting camera:', error);
+            }
+        },
+        clear: function() {
+            return clear();
+        }
+    };
+
     /**
-     * Set camera position and orientation
+     * Ensure setCamera is definitely defined
      * @param {Vector3} position - Camera position
      * @param {number} pitch - Camera pitch in radians
      * @param {number} yaw - Camera yaw in radians
      */
     function setCamera(position, pitch, yaw) {
-        try {
-            // Handle null position
-            if (!position) {
-                console.warn('Null position provided to setCamera');
-                return;
-            }
-            
-            // Copy position
-            _camera.position.x = position.x || 0;
-            _camera.position.y = position.y || 0;
-            _camera.position.z = position.z || 0;
-            
-            // Set orientation
-            _camera.pitch = pitch || 0;
-            _camera.yaw = yaw || 0;
-            
-            // Update direction vector safely
-            try {
-                _camera.direction = Math3D.eulerToDirection(_camera.pitch, _camera.yaw);
-            } catch (dirError) {
-                console.error('Failed to update camera direction:', dirError);
-                // Fall back to default direction
-                _camera.direction = new Vector3(0, 0, 1);
-            }
-            
-            // Log camera update
-            console.log('Camera updated:', 
-                JSON.stringify({
-                    x: _camera.position.x.toFixed(2),
-                    y: _camera.position.y.toFixed(2),
-                    z: _camera.position.z.toFixed(2),
-                    pitch: _camera.pitch.toFixed(2),
-                    yaw: _camera.yaw.toFixed(2)
-                })
-            );
-        } catch (error) {
-            console.error('Error in setCamera:', error);
-        }
+        return MyApp.Renderer.setCamera(position, pitch, yaw);
     }
 
-    /**
-     * Clear the canvas
-     */
-    function clear() {
-        _ctx.clearRect(0, 0, _width, _height);
-    }
-
-    // Export the public API
-    MyApp.Renderer = {
-        init,
-        resize,
-        render,
-        setCamera,
-        clear
-    };
-
-    console.log('Renderer module loaded');
+    // No need to export again, we already did it
+    console.log('Renderer module loaded with functions:', Object.keys(MyApp.Renderer).join(', '));
 })(window.MyApp || (window.MyApp = {}));
