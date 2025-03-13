@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -10,21 +11,22 @@
       padding: 0;
       box-sizing: border-box;
     }
-    
-    html, body {
+
+    html,
+    body {
       width: 100%;
       height: 100%;
       overflow: hidden;
       touch-action: none;
     }
-    
+
     #game-container {
       width: 100%;
       height: 100%;
       position: relative;
       overflow: hidden;
     }
-    
+
     #game-canvas {
       position: absolute;
       top: 0;
@@ -33,7 +35,7 @@
       height: 100%;
       touch-action: none;
     }
-    
+
     #loading {
       position: fixed;
       top: 0;
@@ -49,7 +51,7 @@
       font-family: Arial, sans-serif;
       z-index: 1000;
     }
-    
+
     #error {
       position: fixed;
       top: 0;
@@ -63,7 +65,7 @@
       z-index: 1001;
       display: none;
     }
-    
+
     .spinner {
       border: 6px solid rgba(255, 255, 255, 0.3);
       border-radius: 50%;
@@ -73,33 +75,139 @@
       animation: spin 1s linear infinite;
       margin-bottom: 20px;
     }
-    
+
+    #hud {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    #crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 20px;
+      height: 20px;
+      opacity: 0.8;
+    }
+
+    #health-bar {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      width: 200px;
+      height: 20px;
+      background: rgba(0, 0, 0, 0.5);
+      border: 2px solid white;
+    }
+
+    #health-fill {
+      width: 100%;
+      height: 100%;
+      background: #ff3333;
+    }
+
+    #ammo-counter {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      color: white;
+      font-family: Arial, sans-serif;
+      font-size: 24px;
+      text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.5);
+    }
+
+    #game-over {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      font-family: Arial, sans-serif;
+      z-index: 1000;
+      display: none;
+    }
+
+    #score {
+      font-size: 48px;
+      margin-bottom: 20px;
+    }
+
+    #restart-button {
+      padding: 10px 20px;
+      background: #ff3333;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 20px;
+      cursor: pointer;
+    }
+
     @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
     }
   </style>
 </head>
+
 <body>
   <div id="loading">
     <div class="spinner"></div>
     <p>Loading game files...</p>
   </div>
-  
+
   <div id="error"></div>
-  
+
   <div id="game-container">
     <canvas id="game-canvas"></canvas>
+
+    <div id="hud">
+      <svg id="crosshair" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" fill="none" stroke="white" stroke-width="1.5" />
+        <line x1="12" y1="4" x2="12" y2="8" stroke="white" stroke-width="1.5" />
+        <line x1="12" y1="16" x2="12" y2="20" stroke="white" stroke-width="1.5" />
+        <line x1="4" y1="12" x2="8" y2="12" stroke="white" stroke-width="1.5" />
+        <line x1="16" y1="12" x2="20" y2="12" stroke="white" stroke-width="1.5" />
+      </svg>
+
+      <div id="health-bar">
+        <div id="health-fill"></div>
+      </div>
+
+      <div id="ammo-counter">30/120</div>
+    </div>
+  </div>
+
+  <div id="game-over">
+    <h1>Game Over</h1>
+    <div id="score">Score: 0</div>
+    <button id="restart-button">Play Again</button>
   </div>
 
   <script>
     // Game loader
-    (function() {
+    (function () {
       const errorElement = document.getElementById('error');
       const loadingElement = document.getElementById('loading');
       const gameContainer = document.getElementById('game-container');
       const gameCanvas = document.getElementById('game-canvas');
-      
+
       // Function to load a script from a URL
       const loadScript = async (url) => {
         try {
@@ -114,35 +222,48 @@
           return null;
         }
       };
-      
+
       // Show error message
       const showError = (message) => {
         errorElement.textContent = message;
         errorElement.style.display = 'block';
         loadingElement.style.display = 'none';
       };
-      
+
       // Base repository URL
       const baseUrl = 'https://raw.githubusercontent.com/moukrea/fps-artifact/main';
-      
+
       // List of scripts to load in order
       const scripts = [
-        // List of files here
+        `${baseUrl}/js/utils.js`,
+        `${baseUrl}/js/math.js`,
+        `${baseUrl}/js/audio.js`,
+        `${baseUrl}/js/input.js`,
+        `${baseUrl}/js/texture.js`,
+        `${baseUrl}/js/map.js`,
+        `${baseUrl}/js/raycaster.js`,
+        `${baseUrl}/js/weapon.js`,
+        `${baseUrl}/js/enemy.js`,
+        `${baseUrl}/js/physics.js`,
+        `${baseUrl}/js/particle.js`,
+        `${baseUrl}/js/ui.js`,
+        `${baseUrl}/js/game.js`,
+        `${baseUrl}/js/main.js`
       ];
-      
+
       // Load and execute all scripts in order
       const loadAllScripts = async () => {
         try {
           // Create a global game object to share state and functions
           window.FPSGame = {};
-          
+
           // Load scripts in sequence
           for (const scriptUrl of scripts) {
             const scriptCode = await loadScript(scriptUrl);
             if (!scriptCode) {
               return; // Stop if any script fails to load
             }
-            
+
             // Execute the code
             try {
               // Create a function from the code to execute it in the global scope
@@ -154,7 +275,7 @@
               return;
             }
           }
-          
+
           // Initialize game if main.js defined an init function
           if (typeof FPSGame.init === 'function') {
             FPSGame.init(gameContainer, gameCanvas);
@@ -168,10 +289,11 @@
           console.error(err);
         }
       };
-      
+
       // Start loading scripts when the page is loaded
       window.addEventListener('load', loadAllScripts);
     })();
   </script>
 </body>
+
 </html>
