@@ -63,14 +63,9 @@
                 kills: 0
             };
 
-            MyApp.UI.render(ctx, dummyPlayer, canvas.width, canvas.height);
-
-            // Debug rendering
-            ctx.fillStyle = '#FF0000';
-            ctx.fillRect(10, 10, 20, 20);
-            ctx.fillStyle = '#FFFFFF';
-            ctx.font = '20px Arial';
-            ctx.fillText('GAME INITIALIZED - CLICK TO START', canvas.width / 2 - 150, canvas.height / 2);
+            if (MyApp.UI) {
+                MyApp.UI.render(ctx, dummyPlayer, canvas.width, canvas.height);
+            }
         }
 
         console.log('Game initialized');
@@ -339,14 +334,8 @@
         // Cap delta time to avoid spiral of death
         if (deltaTime > 100) deltaTime = 100;
 
-        // Calculate FPS cap delay
-        const delay = Math.max(0, _gameSettings.msPerFrame - deltaTime);
-
         // Schedule next frame
         _animationFrameId = requestAnimationFrame(_gameLoop);
-
-        // Skip update if we need to wait for FPS cap
-        if (delay > 0) return;
 
         // Update time tracking
         _lastUpdateTime = now;
@@ -371,20 +360,22 @@
             return;
         }
 
-        // Update player
-        if (MyApp.Player) {
-            MyApp.Player.update(deltaTime, MyApp.Map, [..._itemEntities]);
-        }
+        try {
+            // Update player
+            if (MyApp.Player) {
+                MyApp.Player.update(deltaTime, MyApp.Map, [..._itemEntities]);
+            }
 
-        // Update enemies - pass the complete Player module instead of just the state
-        if (MyApp.Enemy) {
-            // Pass the player's state object from getState() 
-            // This was modified in enemy.js to check player.state instead of player.isDead()
-            MyApp.Enemy.update(deltaTime, MyApp.Player.getState(), MyApp.Map);
-        }
+            // Update enemies - pass the player's state object
+            if (MyApp.Enemy && MyApp.Player) {
+                MyApp.Enemy.update(deltaTime, MyApp.Player.getState(), MyApp.Map);
+            }
 
-        // Update item entities
-        _updateEntities(deltaTime);
+            // Update item entities
+            _updateEntities(deltaTime);
+        } catch (error) {
+            console.error('Error during game update:', error);
+        }
     }
 
     /**
@@ -392,26 +383,30 @@
      */
     function _render() {
         if (MyApp.Renderer) {
-            // Clear the canvas
-            MyApp.Renderer.clear();
+            try {
+                // Get player state for camera
+                const player = MyApp.Player ? MyApp.Player.getState() : null;
 
-            // Get player state for camera
-            const player = MyApp.Player ? MyApp.Player.getState() : null;
+                if (player) {
+                    // Set camera position and orientation
+                    MyApp.Renderer.setCamera(
+                        player.position,
+                        player.pitch,
+                        player.yaw
+                    );
 
-            if (player) {
-                // Set camera position and orientation
-                MyApp.Renderer.setCamera(
-                    player.position,
-                    player.pitch,
-                    player.yaw
-                );
+                    // Get active enemies
+                    const activeEnemies = MyApp.Enemy ? MyApp.Enemy.getActiveEnemies() : [];
 
-                // Render the scene
-                MyApp.Renderer.render(
-                    MyApp.Map,
-                    [...MyApp.Enemy.getActiveEnemies(), ..._itemEntities],
-                    player
-                );
+                    // Render the scene using the Renderer module
+                    MyApp.Renderer.render(
+                        MyApp.Map,
+                        [...activeEnemies, ..._itemEntities],
+                        player
+                    );
+                }
+            } catch (error) {
+                console.error('Error during rendering:', error);
             }
         }
     }

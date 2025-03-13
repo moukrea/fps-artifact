@@ -111,10 +111,10 @@
             // Pause/unpause
             if (key === 'escape') {
                 if (_gameState === 'playing') {
-                    _gameState = 'paused';
+                    setGameState('paused');
                     if (MyApp.Game) MyApp.Game.pauseGame();
                 } else if (_gameState === 'paused') {
-                    _gameState = 'playing';
+                    setGameState('playing');
                     if (MyApp.Game) MyApp.Game.resumeGame();
                 }
             }
@@ -199,7 +199,7 @@
 
         // Listen for death events
         MyApp.Player.on('death', () => {
-            _gameState = 'gameover';
+            setGameState('gameover');
             addMessage('YOU DIED', '#f00', 5000);
         });
     }
@@ -215,8 +215,8 @@
             case 'startGame':
                 console.log('Starting game from menu selection');
                 if (MyApp.Game) {
-                    // First set the game state
-                    _gameState = 'playing';
+                    // First set the game state to playing
+                    setGameState('playing');
                     // Then start the game
                     setTimeout(() => {
                         MyApp.Game.startGame();
@@ -267,9 +267,11 @@
         // Render based on game state
         switch (_gameState) {
             case 'menu':
+                // Only render the menu when in menu state
                 _renderMenu();
                 break;
             case 'playing':
+                // Only render HUD when in playing state
                 _renderHud(player);
                 break;
             case 'paused':
@@ -698,7 +700,16 @@
      */
     function setGameState(state) {
         if (['menu', 'playing', 'paused', 'gameover'].includes(state)) {
+            console.log(`Game state changing from ${_gameState} to ${state}`);
             _gameState = state;
+
+            // Clear any existing HUD elements when transitioning to menu
+            if (state === 'menu') {
+                // Reset the renderer to ensure clean canvas
+                if (MyApp.Renderer) {
+                    MyApp.Renderer.clear();
+                }
+            }
         } else {
             console.error(`Invalid game state: ${state}`);
         }

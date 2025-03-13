@@ -359,10 +359,6 @@
         } else {
             console.warn('Z-buffer not initialized');
         }
-
-        // Debug: draw a small indicator to ensure rendering is working
-        _ctx.fillStyle = '#FF0000';
-        _ctx.fillRect(0, 0, 10, 10);
     }
 
     /**
