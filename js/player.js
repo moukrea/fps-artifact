@@ -122,6 +122,10 @@
      * @param {Object} options - Optional reset options
      */
     function reset(options = {}) {
+        // Backup any important values from current player that should persist
+        const wasAlive = _player.state !== 'dead';
+        
+        // Create a new player object with default values
         _player = {
             // Position and movement
             position: new Vector3(0, 0, 0),
@@ -140,7 +144,7 @@
             gravity: 0.01,
 
             // State
-            state: 'alive',
+            state: wasAlive ? 'alive' : 'dead',
             health: 100,
             maxHealth: 100,
             armor: 0,
@@ -178,10 +182,20 @@
         if (options.position) _player.position.copy(options.position);
         if (options.direction) _player.direction.copy(options.direction);
 
+        // Validate position
+        if (_player.position.y === undefined || isNaN(_player.position.y)) {
+            _player.position.y = 0;
+        }
+
+        // Log the reset
+        console.log('Player reset with position:', 
+            `X: ${_player.position.x.toFixed(2)}, `,
+            `Y: ${_player.position.y.toFixed(2)}, `,
+            `Z: ${_player.position.z.toFixed(2)}`
+        );
+
         // Emit reset event
         _events.emit('reset', _player);
-
-        console.log('Player reset');
     }
 
     /**
@@ -268,8 +282,13 @@
      * @param {Object} map - Map object for collision
      */
     function _updateMovement(deltaTime, map) {
+        if (!map) {
+            console.warn('Map not available for player movement');
+            return;
+        }
+        
         // Get movement vector from input
-        const movement = MyApp.Input.getMovementVector();
+        const movement = MyApp.Input ? MyApp.Input.getMovementVector() : { x: 0, y: 0 };
 
         // Calculate forward and right vectors
         const forward = new Vector3(_player.direction.x, 0, _player.direction.z).normalize();
