@@ -1,24 +1,7 @@
 .
 ├── README.md
 ├── RULES.md
-├── controls
-│   ├── mouse.js
-│   └── touch.js
-├── game
-│   ├── physics.js
-│   ├── state.js
-│   └── weapons.js
-├── graphics
-│   ├── effects.js
-│   └── raycaster.js
 ├── index.html
-├── main.js
-├── tree
-├── ui
-│   ├── hud.js
-│   └── pauseMenu.js
-└── utils
-    ├── constants.js
-    └── layout.js
+└── tree
 
-5 directories, 16 files
+0 directories, 4 files
