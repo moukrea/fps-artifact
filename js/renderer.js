@@ -694,6 +694,29 @@
         }
     }
 
+    /**
+     * Set camera position and orientation
+     * @param {Vector3} position - Camera position
+     * @param {number} pitch - Camera pitch in radians
+     * @param {number} yaw - Camera yaw in radians
+     */
+    function setCamera(position, pitch, yaw) {
+        if (!position) {
+            console.warn('Invalid camera position provided');
+            return;
+        }
+        
+        try {
+            _camera.position.copy(position);
+            _camera.pitch = pitch;
+            _camera.yaw = yaw;
+            // Update camera direction vector
+            _camera.direction = Math3D.eulerToDirection(pitch, yaw);
+        } catch (error) {
+            console.error('Error setting camera:', error);
+        }
+    }
+
     // Export the public API
     MyApp.Renderer = {
         init,
