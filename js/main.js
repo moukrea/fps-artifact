@@ -169,6 +169,25 @@
         // Log initialization time
         const initTime = performance.now() - startTime;
         console.log(`Game initialized in ${initTime.toFixed(0)}ms`);
+
+        // Force an initial render of the menu
+        if (MyApp.UI && MyApp.UI.getGameState() === 'menu') {
+            // Get the canvas 2D context
+            const ctx = canvas.getContext('2d');
+
+            // Render the menu
+            MyApp.UI.render(ctx, {
+                health: 100,
+                maxHealth: 100,
+                armor: 0,
+                weapon: { type: 'pistol', ammo: 12, maxAmmo: 12 },
+                totalAmmo: 60,
+                score: 0,
+                kills: 0
+            }, canvas.width, canvas.height);
+
+            console.log('Initial menu rendered');
+        }
     }
 
     // Export the public API

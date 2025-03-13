@@ -238,8 +238,12 @@
      * Render the main menu
      */
     function _renderMenu() {
-        // Draw black semi-transparent background
-        _ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        // Draw solid black background to ensure visibility
+        _ctx.fillStyle = '#000000';
+        _ctx.fillRect(0, 0, _width, _height);
+
+        // Add a colored overlay to ensure we see something
+        _ctx.fillStyle = 'rgba(20, 20, 50, 0.8)';
         _ctx.fillRect(0, 0, _width, _height);
 
         // Draw title

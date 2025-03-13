@@ -341,10 +341,28 @@
      * Clear the canvas
      */
     function clear() {
+        if (!_ctx) {
+            console.error('Renderer context not available');
+            return;
+        }
+
+        // Clear with a background color instead of clearRect to ensure something happens
+        _ctx.fillStyle = '#000000';
+        _ctx.fillRect(0, 0, _width, _height);
+
+        // Also use clearRect to be thorough
         _ctx.clearRect(0, 0, _width, _height);
 
         // Reset z-buffer
-        _zbuffer.fill(Infinity);
+        if (_zbuffer) {
+            _zbuffer.fill(Infinity);
+        } else {
+            console.warn('Z-buffer not initialized');
+        }
+
+        // Debug: draw a small indicator to ensure rendering is working
+        _ctx.fillStyle = '#FF0000';
+        _ctx.fillRect(0, 0, 10, 10);
     }
 
     /**

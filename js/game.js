@@ -50,6 +50,27 @@
         // Set UI to menu state initially
         if (MyApp.UI) {
             MyApp.UI.setGameState('menu');
+
+            // Force an initial render to make sure something appears
+            const ctx = canvas.getContext('2d');
+            const dummyPlayer = {
+                health: 100,
+                maxHealth: 100,
+                armor: 0,
+                weapon: { type: 'pistol', ammo: 12, maxAmmo: 12 },
+                totalAmmo: 60,
+                score: 0,
+                kills: 0
+            };
+
+            MyApp.UI.render(ctx, dummyPlayer, canvas.width, canvas.height);
+
+            // Debug rendering
+            ctx.fillStyle = '#FF0000';
+            ctx.fillRect(10, 10, 20, 20);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '20px Arial';
+            ctx.fillText('GAME INITIALIZED - CLICK TO START', canvas.width / 2 - 150, canvas.height / 2);
         }
 
         console.log('Game initialized');
