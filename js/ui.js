@@ -97,9 +97,12 @@
             if (_gameState === 'menu') {
                 if (key === 'arrowup' || key === 'w') {
                     _menuSelection = (_menuSelection - 1 + _menuItems.length) % _menuItems.length;
+                    console.log('Menu selection changed to:', _menuSelection);
                 } else if (key === 'arrowdown' || key === 's') {
                     _menuSelection = (_menuSelection + 1) % _menuItems.length;
+                    console.log('Menu selection changed to:', _menuSelection);
                 } else if (key === 'enter' || key === ' ') {
+                    console.log('Menu item selected:', _menuItems[_menuSelection].label);
                     _handleMenuSelection();
                 }
             }
@@ -110,6 +113,29 @@
                     _gameState = 'paused';
                 } else if (_gameState === 'paused') {
                     _gameState = 'playing';
+                }
+            }
+        });
+
+        // Listen for menu clicks
+        MyApp.Input.on('menuClick', (x, y) => {
+            if (_gameState !== 'menu') return;
+
+            console.log('Menu click at:', x, y);
+
+            // Calculate menu item positions to detect clicks
+            const menuY = _height / 2;
+            const menuItemHeight = 40;
+
+            for (let i = 0; i < _menuItems.length; i++) {
+                const itemY = menuY + i * menuItemHeight;
+
+                // Check if click is within this menu item
+                if (y >= itemY - menuItemHeight / 2 && y <= itemY + menuItemHeight / 2) {
+                    _menuSelection = i;
+                    console.log('Menu item clicked:', _menuItems[i].label);
+                    _handleMenuSelection();
+                    break;
                 }
             }
         });
@@ -180,23 +206,36 @@
      */
     function _handleMenuSelection() {
         const selected = _menuItems[_menuSelection];
+        console.log('Handling menu selection:', selected.label, selected.action);
 
         switch (selected.action) {
             case 'startGame':
-                _gameState = 'playing';
+                console.log('Starting game from menu selection');
                 if (MyApp.Game) {
-                    MyApp.Game.startGame();
+                    // First set the game state
+                    _gameState = 'playing';
+                    // Then start the game
+                    setTimeout(() => {
+                        MyApp.Game.startGame();
+                    }, 100); // Small delay to ensure state change is processed
+                } else {
+                    console.error('Game module not available!');
                 }
                 break;
             case 'showOptions':
+                console.log('Options menu selected (not implemented)');
                 // TODO: Show options menu
                 break;
             case 'showControls':
+                console.log('Controls selected (not implemented)');
                 // TODO: Show controls screen
                 break;
             case 'showCredits':
+                console.log('Credits selected (not implemented)');
                 // TODO: Show credits
                 break;
+            default:
+                console.warn('Unknown menu action:', selected.action);
         }
     }
 

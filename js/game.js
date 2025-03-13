@@ -186,6 +186,8 @@
      * Start the game loop
      */
     function startGame() {
+        console.log('Starting game...');
+
         // Reset game state
         _currentLevel = 1;
         _gameStartTime = Utils.now();
@@ -196,43 +198,66 @@
 
         // Generate a new map
         if (MyApp.Map) {
+            console.log('Generating map...');
             MyApp.Map.generate(Date.now());
+        } else {
+            console.error('Map module not available!');
         }
 
         // Reset player
         if (MyApp.Player) {
+            console.log('Resetting player...');
             // Get a spawn position from the map
             let spawnPos = null;
             if (MyApp.Map) {
                 spawnPos = MyApp.Map.getRandomFreeSpace(true);
+                console.log('Player spawn position:', spawnPos);
             }
 
             if (!spawnPos) {
+                console.warn('No spawn position found, using default');
                 spawnPos = { x: 2, y: 0, z: 2 };
             }
 
             MyApp.Player.reset({
                 position: new Vector3(spawnPos.x, spawnPos.y, spawnPos.z)
             });
+        } else {
+            console.error('Player module not available!');
         }
 
         // Reset enemy system
         if (MyApp.Enemy) {
+            console.log('Resetting enemies...');
             MyApp.Enemy.reset();
+        } else {
+            console.error('Enemy module not available!');
         }
 
         // Set UI to playing state
         if (MyApp.UI) {
+            console.log('Setting UI state to playing...');
             MyApp.UI.setGameState('playing');
             MyApp.UI.addMessage('Game Started!', '#ffff00', 2000);
             MyApp.UI.addMessage(`Level ${_currentLevel}`, '#00ffff', 3000);
+        } else {
+            console.error('UI module not available!');
         }
 
         // Start game loop if not already running
         if (!_running) {
+            console.log('Starting game loop...');
             _running = true;
             _lastUpdateTime = Utils.now();
             _gameLoop();
+        } else {
+            console.log('Game loop already running');
+        }
+
+        // After starting the game, request pointer lock
+        if (_canvas && document.pointerLockElement !== _canvas) {
+            console.log('Requesting pointer lock...');
+            _canvas.requestPointerLock();
         }
 
         console.log('Game started');

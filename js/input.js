@@ -86,10 +86,19 @@
             element.addEventListener('touchcancel', handleTouchEnd);
         }
 
-        // Pointer lock API for mouse look
+        // Pointer lock API for mouse look - only in playing state
         element.addEventListener('click', () => {
-            if (!_mouse.locked) {
+            // Only request pointer lock if the game is playing (not in menu)
+            if (!_mouse.locked && MyApp.UI && MyApp.UI.getGameState() === 'playing') {
                 requestPointerLock(element);
+            } else if (MyApp.UI && MyApp.UI.getGameState() === 'menu') {
+                // Handle menu click
+                const rect = element.getBoundingClientRect();
+                const x = _mouse.x;
+                const y = _mouse.y;
+
+                // Emit a special menu click event
+                _events.emit('menuClick', x, y);
             }
         });
 
