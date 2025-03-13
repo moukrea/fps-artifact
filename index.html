@@ -3,33 +3,17 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>FPS Artifact</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Canvas FPS</title>
   <style>
+    /* Initial inline styles */
     body {
       margin: 0;
       padding: 0;
-      overflow: hidden;
       background-color: #000;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
       color: white;
       font-family: Arial, sans-serif;
-    }
-
-    #game-container {
-      position: relative;
-      width: 100%;
-      height: 100%;
-    }
-
-    #gameCanvas {
-      display: block;
-      width: 100%;
-      height: 100%;
-      touch-action: none;
+      overflow: hidden;
     }
 
     #loading {
@@ -50,23 +34,28 @@
       max-width: 80%;
       display: none;
     }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
   </style>
 </head>
 
 <body>
-  <div id="game-container">
-    <canvas id="gameCanvas"></canvas>
-    <div id="loading">Loading game...</div>
+  <div id="app-container">
+    <canvas id="game-canvas"></canvas>
+    <div id="loading">Loading...</div>
     <div id="error"></div>
   </div>
 
   <script>
-    // Game loader
+    // Script loader
     (function () {
       const errorElement = document.getElementById('error');
       const loadingElement = document.getElementById('loading');
-      const gameContainer = document.getElementById('game-container');
-      const gameCanvas = document.getElementById('gameCanvas');
+      const appContainer = document.getElementById('app-container');
 
       // Function to load a script from a URL
       const loadScript = async (url) => {
@@ -83,6 +72,24 @@
         }
       };
 
+      // Function to load CSS from a URL
+      const loadCSS = async (url) => {
+        try {
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error(`Failed to load CSS from ${url}: ${response.status}`);
+          }
+          const cssText = await response.text();
+          const styleElement = document.createElement('style');
+          styleElement.textContent = cssText;
+          document.head.appendChild(styleElement);
+          return true;
+        } catch (err) {
+          console.error(`Error loading CSS: ${err.message}`);
+          return false;
+        }
+      };
+
       // Show error message
       const showError = (message) => {
         errorElement.textContent = message;
@@ -93,18 +100,37 @@
       // Base repository URL
       const baseUrl = 'https://raw.githubusercontent.com/moukrea/fps-artifact/refs/heads/main';
 
+      // List of CSS files to load
+      const cssFiles = [
+        `${baseUrl}/css/styles.css`
+      ];
+
       // List of scripts to load in order
       const scripts = [
+        `${baseUrl}/js/utils.js`,
+        `${baseUrl}/js/input.js`,
+        `${baseUrl}/js/math3d.js`,
+        `${baseUrl}/js/renderer.js`,
+        `${baseUrl}/js/map.js`,
+        `${baseUrl}/js/enemy.js`,
+        `${baseUrl}/js/player.js`,
+        `${baseUrl}/js/ui.js`,
+        `${baseUrl}/js/game.js`,
         `${baseUrl}/js/main.js`
       ];
 
-      // Load and execute all scripts in order
-      const loadAllScripts = async () => {
+      // Load and execute all resources
+      const loadAllResources = async () => {
         try {
-          // Create a global game object to share state and functions
-          window.FPSGame = {};
+          // Global namespace for the app
+          window.MyApp = {};
 
-          // Load scripts in sequence
+          // First load all CSS files
+          for (const cssUrl of cssFiles) {
+            await loadCSS(cssUrl);
+          }
+
+          // Then load scripts in sequence
           for (const scriptUrl of scripts) {
             const scriptCode = await loadScript(scriptUrl);
             if (!scriptCode) {
@@ -114,8 +140,8 @@
             // Execute the code
             try {
               // Create a function from the code to execute it in the global scope
-              const scriptFunction = new Function('FPSGame', scriptCode);
-              scriptFunction(window.FPSGame);
+              const scriptFunction = new Function('MyApp', scriptCode);
+              scriptFunction(window.MyApp);
             } catch (execError) {
               showError(`Error executing ${scriptUrl}: ${execError.message}`);
               console.error(execError);
@@ -125,26 +151,27 @@
 
           // Give a small delay to ensure scripts are fully processed
           setTimeout(() => {
-            console.log("FPSGame object:", FPSGame);
-            // Check for init function and initialize game
-            if (typeof FPSGame.init === 'function') {
-              console.log("Initializing game...");
-              FPSGame.init(gameContainer, gameCanvas);
+            console.log("App object:", MyApp);
+            // Check for init function and initialize
+            if (typeof MyApp.init === 'function') {
+              console.log("Initializing application...");
+              MyApp.init(appContainer);
               // Hide loading screen
               loadingElement.style.display = 'none';
             } else {
-              console.error("Init function not found in FPSGame:", FPSGame);
-              showError('Game initialization function not found! Check console for details.');
+              console.error("Init function not found in MyApp:", MyApp);
+              showError('Application initialization function not found! Check console for details.');
             }
           }, 500); // 500ms delay to ensure scripts are processed
+
         } catch (err) {
-          showError(`Failed to initialize game: ${err.message}`);
+          showError(`Failed to initialize application: ${err.message}`);
           console.error(err);
         }
       };
 
-      // Start loading scripts when the page is loaded
-      window.addEventListener('load', loadAllScripts);
+      // Start loading resources when the page is loaded
+      window.addEventListener('load', loadAllResources);
     })();
   </script>
 </body>
