@@ -49,7 +49,6 @@
 
         // Generate the map
         generate();
-
         console.log('Map initialized');
     }
 
@@ -60,8 +59,12 @@
     function generate(seed = Date.now()) {
         // Set seed for deterministic generation
         _mapSeed = seed;
-        Math.seedrandom = seed; // Note: This would require seedrandom library
-
+        
+        // Initialize seedrandom library if it exists
+        if (typeof Math.seedrandom === 'function') {
+            Math.seedrandom(_mapSeed.toString());
+        }
+        
         console.log(`Generating map with seed: ${_mapSeed}`);
 
         // Initialize map data with empty cells
@@ -86,6 +89,27 @@
 
         // Debug output
         console.log(`Map generated: ${_mapSize}x${_mapSize}, free spaces: ${_freeSpaces.length}`);
+        
+        // Force regeneration of free spaces if none are found
+        if (_freeSpaces.length === 0) {
+            console.warn('No free spaces found in map! Generating fallback spaces...');
+            // Create some guaranteed free spaces
+            for (let x = 5; x < _mapSize - 5; x += 10) {
+                for (let y = 5; y < _mapSize - 5; y += 10) {
+                    // Create a small free area
+                    for (let dx = -1; dx <= 1; dx++) {
+                        for (let dy = -1; dy <= 1; dy++) {
+                            if (x + dx >= 0 && x + dx < _mapSize && y + dy >= 0 && y + dy < _mapSize) {
+                                _mapData[y + dy][x + dx] = CELL_TYPE.EMPTY;
+                            }
+                        }
+                    }
+                    // Add to free spaces
+                    _freeSpaces.push({ x, y });
+                }
+            }
+            console.log('Generated fallback spaces:', _freeSpaces.length);
+        }
 
         return _mapData;
     }
@@ -371,20 +395,37 @@
      * @returns {Object|null} Free space coordinates or null if none available
      */
     function getRandomFreeSpace(remove = false) {
-        if (_freeSpaces.length === 0) return null;
-
+        if (_freeSpaces.length === 0) {
+            console.warn('No free spaces available for spawning!');
+            
+            // Create a default spawn point in a safe location
+            const defaultSpace = { 
+                x: _cellSize * Math.floor(_mapSize / 2), 
+                y: 0, 
+                z: _cellSize * Math.floor(_mapSize / 2) 
+            };
+            
+            console.log('Using default spawn position:', defaultSpace);
+            return defaultSpace;
+        }
+        
         const index = Utils.randomInt(0, _freeSpaces.length - 1);
         const space = _freeSpaces[index];
-
-        if (remove) {
-            _freeSpaces.splice(index, 1);
-        }
-
-        return {
+        
+        // Create the world position
+        const worldPos = {
             x: space.x * _cellSize,
             y: 0, // Ground level
             z: space.y * _cellSize
         };
+        
+        console.log('Selected spawn position:', worldPos);
+        
+        if (remove) {
+            _freeSpaces.splice(index, 1);
+        }
+        
+        return worldPos;
     }
 
     /**

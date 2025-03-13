@@ -323,72 +323,54 @@
     }
 
     /**
-     * Set camera position and orientation
-     * @param {Vector3} position - Camera position
-     * @param {number} pitch - Camera pitch in radians
-     * @param {number} yaw - Camera yaw in radians
-     */
-    function setCamera(position, pitch, yaw) {
-        _camera.position.copy(position);
-        _camera.pitch = pitch;
-        _camera.yaw = yaw;
-
-        // Update camera direction vector
-        _camera.direction = Math3D.eulerToDirection(pitch, yaw);
-    }
-
-    /**
-     * Clear the canvas
-     */
-    function clear() {
-        if (!_ctx) {
-            console.error('Renderer context not available');
-            return;
-        }
-
-        // Clear with a background color instead of clearRect to ensure something happens
-        _ctx.fillStyle = '#000000';
-        _ctx.fillRect(0, 0, _width, _height);
-
-        // Also use clearRect to be thorough
-        _ctx.clearRect(0, 0, _width, _height);
-
-        // Reset z-buffer
-        if (_zbuffer) {
-            _zbuffer.fill(Infinity);
-        } else {
-            console.warn('Z-buffer not initialized');
-        }
-    }
-
-    /**
      * Render the scene
      * @param {Object} map - Map data
      * @param {Array} entities - Game entities to render
      * @param {Object} player - Player object
      */
     function render(map, entities, player) {
-        // Clear the canvas first
-        clear();
+        // Skip rendering if any required components are missing
+        if (!map || !player || !player.position) {
+            console.warn('Missing required components for rendering:', {
+                map: !!map,
+                player: !!player,
+                playerPosition: player && !!player.position
+            });
+            return;
+        }
 
-        // Draw sky
-        _drawSky();
+        try {
+            // Clear the canvas first
+            clear();
 
-        // Draw floor
-        _drawFloor();
+            // Check if we're in a state where game world should be rendered
+            if (MyApp.UI && MyApp.UI.getGameState() === 'playing') {
+                // Draw sky
+                _drawSky();
 
-        // Draw walls using raycasting
-        _drawWalls(map);
+                // Draw floor
+                _drawFloor();
 
-        // Draw sprites (enemies, items, etc.)
-        _drawSprites(entities);
+                // Draw walls using raycasting
+                _drawWalls(map);
 
-        // Draw weapon
-        _drawWeapon(player.weapon);
+                // Draw sprites (enemies, items, etc.)
+                if (entities && entities.length > 0) {
+                    _drawSprites(entities);
+                }
 
-        // Draw UI/HUD
-        if (MyApp.UI) {
-            MyApp.UI.render(_ctx, player, _width, _height);
+                // Draw weapon
+                if (player.weapon) {
+                    _drawWeapon(player.weapon);
+                }
+            }
+
+            // Draw UI/HUD - always do this last so it's on top
+            if (MyApp.UI) {
+                MyApp.UI.render(_ctx, player, _width, _height);
+            }
+        } catch (error) {
+            console.error('Error during rendering:', error);
         }
     }
 

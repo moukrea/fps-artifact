@@ -7,7 +7,7 @@
     const Utils = MyApp.Utils;
     const Math3D = MyApp.Math3D;
     const Vector3 = Math3D.Vector3;
-
+    
     // Private variables
     let _canvas = null;
     let _gameStartTime = 0;
@@ -190,143 +190,114 @@
      */
     function startGame() {
         console.log('Starting game...');
-
-        // Reset game state
-        _currentLevel = 1;
-        _gameStartTime = Utils.now();
-        _levelStartTime = _gameStartTime;
-
-        // Clear any existing pickups
-        _itemEntities = [];
-
-        // Generate a new map
-        if (MyApp.Map) {
-            console.log('Generating map...');
-            MyApp.Map.generate(Date.now());
-        } else {
-            console.error('Map module not available!');
-            return; // Exit if map module is not available
-        }
-
-        // Reset player
-        if (MyApp.Player) {
-            console.log('Resetting player...');
-            // Get a spawn position from the map
-            let spawnPos = null;
-            if (MyApp.Map) {
-                spawnPos = MyApp.Map.getRandomFreeSpace(true);
-
-                // Make sure we have a valid spawn position
-                if (!spawnPos) {
-                    console.warn('Failed to get a spawn position from map, generating fallback position');
-                    spawnPos = { x: 2, y: 0, z: 2 };
-                }
-
-                console.log('Player spawn position:', spawnPos);
-
-                // Reset the player with the spawn position
-                MyApp.Player.reset({
-                    position: new Vector3(spawnPos.x, spawnPos.y, spawnPos.z)
-                });
-            } else {
-                console.error('Map module not available for player spawn!');
-                return; // Exit if map module is not available
-            }
-        } else {
-            console.error('Player module not available!');
-            return; // Exit if player module is not available
-        }
-
-        // Reset enemy system
-        if (MyApp.Enemy) {
-            console.log('Resetting enemies...');
-            MyApp.Enemy.reset();
-        } else {
-            console.error('Enemy module not available!');
-        }
-
-        // Set UI to playing state
-        if (MyApp.UI) {
-            console.log('Setting UI state to playing...');
-            MyApp.UI.setGameState('playing');
-            MyApp.UI.addMessage('Game Started!', '#ffff00', 2000);
-            MyApp.UI.addMessage(`Level ${_currentLevel}`, '#00ffff', 3000);
-        } else {
-            console.error('UI module not available!');
-        }
-
-        // Start game loop if not already running
-        if (!_running) {
-            console.log('Starting game loop...');
-            _running = true;
-            _lastUpdateTime = Utils.now();
-            _gameLoop();
-        } else {
-            console.log('Game loop already running');
-        }
-
-        // After starting the game, request pointer lock
-        if (_canvas && document.pointerLockElement !== _canvas) {
-            console.log('Requesting pointer lock...');
-            _canvas.requestPointerLock = _canvas.requestPointerLock ||
-                _canvas.mozRequestPointerLock ||
-                _canvas.webkitRequestPointerLock;
-            if (_canvas.requestPointerLock) {
-                _canvas.requestPointerLock();
-            }
-        }
-
-        console.log('Game started');
-        _events.emit('gameStart');
-    }
-
-    /**
-     * Stop the game loop
-     */
-    function stopGame() {
-        _running = false;
-
+        
+        // Clear any existing animations
         if (_animationFrameId) {
             cancelAnimationFrame(_animationFrameId);
             _animationFrameId = null;
         }
 
-        console.log('Game stopped');
-        _events.emit('gameStop');
-    }
-
-    /**
-     * Pause the game
-     */
-    function pauseGame() {
-        if (_running) {
-            _running = false;
-
-            if (MyApp.UI) {
-                MyApp.UI.setGameState('paused');
+        // Reset game state
+        _currentLevel = 1;
+        _gameStartTime = Utils.now();
+        _levelStartTime = _gameStartTime;
+        _running = false;
+        
+        // Clear any existing pickups
+        _itemEntities = [];
+        
+        try {
+            // Generate a new map first
+            if (MyApp.Map) {
+                console.log('Generating map...');
+                const seed = Date.now();
+                MyApp.Map.generate(seed);
+            } else {
+                console.error('Map module not available!');
+                return;
             }
-
-            console.log('Game paused');
-            _events.emit('gamePause');
-        }
-    }
-
-    /**
-     * Resume the game
-     */
-    function resumeGame() {
-        if (!_running) {
-            _running = true;
-            _lastUpdateTime = Utils.now();
-
+            
+            // Set UI to playing state early so rendering works properly
             if (MyApp.UI) {
+                console.log('Setting UI state to playing...');
                 MyApp.UI.setGameState('playing');
             }
-
+            
+            // Reset player with proper spawn position
+            if (MyApp.Player) {
+                console.log('Resetting player...');
+                
+                // Get a spawn position from the map - critical step
+                let spawnPos = null;
+                if (MyApp.Map) {
+                    spawnPos = MyApp.Map.getRandomFreeSpace(true);
+                    console.log('Player spawn position:', JSON.stringify(spawnPos));
+                }
+                
+                if (!spawnPos) {
+                    console.warn('Failed to get spawn position, using fallback');
+                    spawnPos = { x: 2, y: 0, z: 2 };
+                }
+                
+                // Reset the player with the spawn position
+                MyApp.Player.reset({
+                    position: new Vector3(spawnPos.x, spawnPos.y, spawnPos.z)
+                });
+                
+                // Verify player position was set
+                const playerState = MyApp.Player.getState();
+                console.log('Player position after reset:', 
+                    playerState.position.x.toFixed(2),
+                    playerState.position.y.toFixed(2),
+                    playerState.position.z.toFixed(2)
+                );
+            } else {
+                console.error('Player module not available!');
+                return;
+            }
+            
+            // Reset enemy system
+            if (MyApp.Enemy) {
+                console.log('Resetting enemies...');
+                MyApp.Enemy.reset();
+            }
+            
+            // Add welcome messages
+            if (MyApp.UI) {
+                MyApp.UI.addMessage('Game Started!', '#ffff00', 2000);
+                MyApp.UI.addMessage(`Level ${_currentLevel}`, '#00ffff', 3000);
+            }
+            
+            // Start game loop
+            console.log('Starting game loop...');
+            _running = true;
+            _lastUpdateTime = Utils.now();
             _gameLoop();
-
-            console.log('Game resumed');
-            _events.emit('gameResume');
+            
+            // Request pointer lock
+            if (_canvas) {
+                console.log('Requesting pointer lock...');
+                setTimeout(() => {
+                    if (_canvas.requestPointerLock) {
+                        _canvas.requestPointerLock();
+                    } else if (_canvas.mozRequestPointerLock) {
+                        _canvas.mozRequestPointerLock();
+                    } else if (_canvas.webkitRequestPointerLock) {
+                        _canvas.webkitRequestPointerLock();
+                    }
+                }, 100); // Small delay to ensure UI state is updated
+            }
+            
+            console.log('Game started successfully');
+            _events.emit('gameStart');
+            
+        } catch (error) {
+            console.error('Error starting game:', error);
+            // Return to menu if there was an error
+            if (MyApp.UI) {
+                MyApp.UI.setGameState('menu');
+                MyApp.UI.addMessage('Error starting game!', '#ff0000', 3000);
+            }
         }
     }
 
@@ -342,20 +313,30 @@
         // Cap delta time to avoid spiral of death
         if (deltaTime > 100) deltaTime = 100;
 
-        // Schedule next frame
+        // Schedule next frame - do this first to avoid blocking
         _animationFrameId = requestAnimationFrame(_gameLoop);
 
-        // Update time tracking
-        _lastUpdateTime = now;
+        try {
+            // Update time tracking
+            _lastUpdateTime = now;
 
-        // Update game state
-        _update(deltaTime);
+            // Update game state
+            _update(deltaTime);
 
-        // Render the scene
-        _render();
+            // Render the scene
+            _render();
 
-        // Check for level transition
-        _checkLevelTransition(now);
+            // Check for level transition
+            _checkLevelTransition(now);
+        } catch (error) {
+            console.error('Error in game loop:', error);
+            
+            // Try to recover by continuing the loop
+            // But stop if there are repeated errors
+            if (_running) {
+                console.log('Attempting to continue despite error');
+            }
+        }
     }
 
     /**
@@ -394,8 +375,9 @@
             try {
                 // Get player state for camera
                 const player = MyApp.Player ? MyApp.Player.getState() : null;
-
-                if (player) {
+                
+                // Only render if we have valid player data
+                if (player && player.position) {
                     // Set camera position and orientation
                     MyApp.Renderer.setCamera(
                         player.position,
@@ -412,6 +394,8 @@
                         [...activeEnemies, ..._itemEntities],
                         player
                     );
+                } else {
+                    console.warn('Missing player data for rendering');
                 }
             } catch (error) {
                 console.error('Error during rendering:', error);
