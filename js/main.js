@@ -805,4 +805,13 @@
 
     // Export functions to FPSGame object
     FPSGame.init = init;
-})(FPSGame);
+
+    // Log to console to confirm the function was exported
+    console.log("FPS Game Engine loaded. Init function exposed:", !!FPSGame.init);
+})(FPSGame || {});
+
+// Ensure init function is available globally as a fallback
+if (typeof window !== 'undefined' && window.FPSGame && !window.FPSGame.init) {
+    window.FPSGame.init = init;
+    console.log("Added init function to global FPSGame object as fallback");
+}
