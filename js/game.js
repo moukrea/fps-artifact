@@ -205,6 +205,7 @@
             MyApp.Map.generate(Date.now());
         } else {
             console.error('Map module not available!');
+            return; // Exit if map module is not available
         }
 
         // Reset player
@@ -214,19 +215,26 @@
             let spawnPos = null;
             if (MyApp.Map) {
                 spawnPos = MyApp.Map.getRandomFreeSpace(true);
+
+                // Make sure we have a valid spawn position
+                if (!spawnPos) {
+                    console.warn('Failed to get a spawn position from map, generating fallback position');
+                    spawnPos = { x: 2, y: 0, z: 2 };
+                }
+
                 console.log('Player spawn position:', spawnPos);
-            }
 
-            if (!spawnPos) {
-                console.warn('No spawn position found, using default');
-                spawnPos = { x: 2, y: 0, z: 2 };
+                // Reset the player with the spawn position
+                MyApp.Player.reset({
+                    position: new Vector3(spawnPos.x, spawnPos.y, spawnPos.z)
+                });
+            } else {
+                console.error('Map module not available for player spawn!');
+                return; // Exit if map module is not available
             }
-
-            MyApp.Player.reset({
-                position: new Vector3(spawnPos.x, spawnPos.y, spawnPos.z)
-            });
         } else {
             console.error('Player module not available!');
+            return; // Exit if player module is not available
         }
 
         // Reset enemy system

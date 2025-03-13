@@ -108,8 +108,8 @@
                 }
             }
 
-            // Pause/unpause
-            if (key === 'escape') {
+            // Pause/unpause with P key instead of ESC
+            if (key === 'p') {
                 if (_gameState === 'playing') {
                     setGameState('paused');
                     if (MyApp.Game) MyApp.Game.pauseGame();
@@ -307,7 +307,7 @@
         _ctx.fillStyle = '#ffffff';
         _ctx.font = '20px Arial';
         _ctx.fillText('A simple doom-like game', _width / 2, _height / 4 + 50);
-
+        
         // Draw menu items
         _ctx.font = '24px Arial';
         const menuY = _height / 2;
@@ -327,11 +327,11 @@
             }
         }
 
-        // Draw instructions
+        // Draw instructions - update to show P instead of ESC
         _ctx.fillStyle = '#888888';
         _ctx.font = '16px Arial';
         _ctx.fillText('Use arrow keys or WASD to navigate, ENTER to select', _width / 2, _height - 100);
-        _ctx.fillText('Press ESC to pause/unpause the game', _width / 2, _height - 70);
+        _ctx.fillText('Press P to pause/unpause the game', _width / 2, _height - 70);
 
         // Draw messages
         _renderMessages();
@@ -583,9 +583,9 @@
         _ctx.textBaseline = 'middle';
         _ctx.fillText('PAUSED', _width / 2, _height / 2);
 
-        // Draw instructions
+        // Draw instructions - update to show P instead of ESC
         _ctx.font = '24px Arial';
-        _ctx.fillText('Press ESC to resume', _width / 2, _height / 2 + 50);
+        _ctx.fillText('Press P to resume', _width / 2, _height / 2 + 50);
     }
 
     /**
