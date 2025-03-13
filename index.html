@@ -5,12 +5,142 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>FPS Artifact</title>
-  <link rel="stylesheet" href="https://raw.githubusercontent.com/moukrea/fps-artifact/refs/heads/main/css/styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+    
+    #game-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    
+    #gameCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+    
+    #loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+    
+    #error {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      color: red;
+      max-width: 80%;
+      display: none;
+    }
+  </style>
 </head>
 
 <body>
-  <canvas id="gameCanvas"></canvas>
-  <script src="https://raw.githubusercontent.com/moukrea/fps-artifact/refs/heads/main/js/main.js"></script>
+  <div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+    <div id="loading">Loading game...</div>
+    <div id="error"></div>
+  </div>
+  
+  <script>
+    // Game loader
+    (function() {
+      const errorElement = document.getElementById('error');
+      const loadingElement = document.getElementById('loading');
+      const gameContainer = document.getElementById('game-container');
+      const gameCanvas = document.getElementById('gameCanvas');
+      
+      // Function to load a script from a URL
+      const loadScript = async (url) => {
+        try {
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error(`Failed to load script from ${url}: ${response.status}`);
+          }
+          return await response.text();
+        } catch (err) {
+          console.error(`Error loading script: ${err.message}`);
+          showError(`Failed to load script: ${err.message}`);
+          return null;
+        }
+      };
+      
+      // Show error message
+      const showError = (message) => {
+        errorElement.textContent = message;
+        errorElement.style.display = 'block';
+        loadingElement.style.display = 'none';
+      };
+      
+      // Base repository URL
+      const baseUrl = 'https://raw.githubusercontent.com/moukrea/fps-artifact/refs/heads/main';
+      
+      // List of scripts to load in order
+      const scripts = [
+        `${baseUrl}/js/main.js`
+      ];
+      
+      // Load and execute all scripts in order
+      const loadAllScripts = async () => {
+        try {
+          // Create a global game object to share state and functions
+          window.FPSGame = {};
+          
+          // Load scripts in sequence
+          for (const scriptUrl of scripts) {
+            const scriptCode = await loadScript(scriptUrl);
+            if (!scriptCode) {
+              return; // Stop if any script fails to load
+            }
+            
+            // Execute the code
+            try {
+              // Create a function from the code to execute it in the global scope
+              const scriptFunction = new Function('FPSGame', scriptCode);
+              scriptFunction(window.FPSGame);
+            } catch (execError) {
+              showError(`Error executing ${scriptUrl}: ${execError.message}`);
+              console.error(execError);
+              return;
+            }
+          }
+          
+          // Initialize game if main.js defined an init function
+          if (typeof FPSGame.init === 'function') {
+            FPSGame.init(gameContainer, gameCanvas);
+            // Hide loading screen
+            loadingElement.style.display = 'none';
+          } else {
+            showError('Game initialization function not found!');
+          }
+        } catch (err) {
+          showError(`Failed to initialize game: ${err.message}`);
+          console.error(err);
+        }
+      };
+      
+      // Start loading scripts when the page is loaded
+      window.addEventListener('load', loadAllScripts);
+    })();
+  </script>
 </body>
 
 </html>
