@@ -300,6 +300,66 @@
             }
         }
     }
+    
+    /**
+     * Stop the game
+     * This is called when the player dies or when exiting the game
+     */
+    function stopGame() {
+        console.log('Stopping game...');
+        
+        // Stop the game loop
+        _running = false;
+        
+        // Cancel any pending animation frame
+        if (_animationFrameId) {
+            cancelAnimationFrame(_animationFrameId);
+            _animationFrameId = null;
+        }
+        
+        // Clear any existing pickups
+        _itemEntities = [];
+        
+        // Notify listeners
+        _events.emit('gameStop');
+        
+        console.log('Game stopped');
+    }
+    
+    /**
+     * Pause the game
+     * This is called when the player pauses the game
+     */
+    function pauseGame() {
+        if (!_running) return;
+        
+        console.log('Pausing game...');
+        _running = false;
+        
+        // Notify listeners
+        _events.emit('gamePause');
+        
+        console.log('Game paused');
+    }
+    
+    /**
+     * Resume a paused game
+     */
+    function resumeGame() {
+        if (_running) return;
+        
+        console.log('Resuming game...');
+        
+        // Resume the game loop
+        _running = true;
+        _lastUpdateTime = Utils.now();
+        _gameLoop();
+        
+        // Notify listeners
+        _events.emit('gameResume');
+        
+        console.log('Game resumed');
+    }
 
     /**
      * Main game loop
