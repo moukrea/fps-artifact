@@ -54,33 +54,12 @@
         [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
     ];
 
-    // Texture patterns for walls
-    const wallTextures = {
-        createBrickPattern: (color1, color2) => {
-            const textureSize = 64;
-            const brickWidth = 16;
-            const brickHeight = 8;
-
-            const canvas = document.createElement('canvas');
-            canvas.width = textureSize;
-            canvas.height = textureSize;
-            const context = canvas.getContext('2d');
-
-            // Background
-            context.fillStyle = color1;
-            context.fillRect(0, 0, textureSize, textureSize);
-
-            // Draw bricks
-            context.fillStyle = color2;
-            for (let y = 0; y < textureSize; y += brickHeight) {
-                const offset = (Math.floor(y / brickHeight) % 2) * (brickWidth / 2);
-                for (let x = 0; x < textureSize; x += brickWidth) {
-                    context.fillRect(x + offset, y, brickWidth - 1, brickHeight - 1);
-                }
-            }
-
-            return canvas;
-        }
+    // Wall colors for different orientations
+    const wallColors = {
+        north: '#445',
+        south: '#556',
+        east: '#667',
+        west: '#778'
     };
 
     // Particles system
@@ -95,17 +74,11 @@
         offsetY: 0
     };
 
-    // Initialize textures
-    let wallTexture;
-
     // Initialize the game
     function init(gameContainer, gameCanvas) {
         // Set up canvas
         canvas = gameCanvas;
         ctx = canvas.getContext('2d');
-
-        // Generate wall texture
-        wallTexture = wallTextures.createBrickPattern('#553322', '#774433');
 
         // Resize canvas to fill window
         resizeCanvas();
@@ -447,40 +420,61 @@
 
     // Render the game
     function render() {
+        // Performance optimization - measure render time
+        const renderStart = performance.now();
+
         // Apply screen shake
         ctx.save();
         ctx.translate(screenShake.offsetX, screenShake.offsetY);
 
-        // Clear canvas
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+        // Clear canvas (use a single clearRect for better performance)
+        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
         // Render 3D view (raycasting)
         renderRaycasting();
 
-        // Render weapon
-        renderWeapon();
-
         // Render particles
         renderParticles();
 
-        // Render HUD
-        renderHUD();
+        // Render weapon
+        renderWeapon();
 
         // Render crosshair
         renderCrosshair();
 
+        // Render HUD
+        renderHUD();
+
         // Reset screen shake
         ctx.restore();
+
+        // Calculate render time for optimization
+        const renderTime = performance.now() - renderStart;
+        if (frameCount % 10 === 0) {
+            console.log(`Render time: ${renderTime.toFixed(2)}ms`);
+        }
     }
 
     // Render the 3D view using raycasting
     function renderRaycasting() {
-        const rayCount = Math.floor(canvasWidth);
+        // Performance optimization - reduce ray count
+        const rayCount = Math.floor(canvasWidth / 2);
+        const pixelWidth = 2; // Draw 2 pixels per ray
         const rayStep = FOV / rayCount;
 
         // Apply bobbing effect
         const bobbingOffset = player.walking ? Math.sin(player.bobPhase) * player.bobAmount * canvasHeight : 0;
+
+        // Pre-render ceiling and floor as full-screen rectangles
+        const ceilingColor = '#222';
+        const floorColor = '#444';
+        ctx.fillStyle = ceilingColor;
+        ctx.fillRect(0, 0, canvasWidth, canvasHeight / 2);
+        ctx.fillStyle = floorColor;
+        ctx.fillRect(0, canvasHeight / 2, canvasWidth, canvasHeight / 2);
+
+        // Arrays to batch rendering operations
+        const wallStrips = [];
 
         for (let i = 0; i < rayCount; i++) {
             // Calculate ray angle
@@ -497,78 +491,37 @@
             const verticalOffset = player.verticalAngle * canvasHeight / 2 + bobbingOffset;
             const wallTop = (canvasHeight - wallHeight) / 2 + verticalOffset;
 
-            // Calculate shading based on distance and wall orientation
+            // Calculate shading based on distance
             let brightness = Math.min(1, 1.0 / (distance * 0.3 + 0.3));
 
-            // Apply different shading based on which wall face was hit
-            if (result.side === 0) { // Horizontal wall face
-                brightness *= 0.8; // Slightly darker
-            }
-
-            // Draw the wall strip
-            if (wallTexture) {
-                // Calculate texture coordinate
-                let wallX;
-                if (result.side === 0) {
-                    wallX = player.y + distance * Math.sin(rayAngle);
-                } else {
-                    wallX = player.x + distance * Math.cos(rayAngle);
-                }
-                wallX -= Math.floor(wallX);
-
-                // Calculate texture column
-                let texX = Math.floor(wallX * wallTexture.width);
-                if ((result.side === 0 && Math.cos(rayAngle) > 0) ||
-                    (result.side === 1 && Math.sin(rayAngle) < 0)) {
-                    texX = wallTexture.width - texX - 1;
-                }
-
-                // Create a pattern from the sliced texture column
-                try {
-                    const tempCanvas = document.createElement('canvas');
-                    tempCanvas.width = 1;
-                    tempCanvas.height = wallTexture.height;
-                    const tempCtx = tempCanvas.getContext('2d');
-                    tempCtx.drawImage(wallTexture, texX, 0, 1, wallTexture.height, 0, 0, 1, wallTexture.height);
-
-                    // Apply brightness
-                    tempCtx.fillStyle = `rgba(0, 0, 0, ${1 - brightness})`;
-                    tempCtx.fillRect(0, 0, 1, wallTexture.height);
-
-                    const pattern = ctx.createPattern(tempCanvas, 'repeat');
-                    ctx.fillStyle = pattern;
-                    ctx.fillRect(i, wallTop, 1, wallHeight);
-                } catch (e) {
-                    // Fallback to solid color if texture fails
-                    const r = Math.floor(200 * brightness);
-                    const g = Math.floor(170 * brightness);
-                    const b = Math.floor(150 * brightness);
-                    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-                    ctx.fillRect(i, wallTop, 1, wallHeight);
-                }
+            // Choose color based on wall face direction
+            let baseColor;
+            if (result.side === 0) {
+                baseColor = rayAngle < Math.PI ? wallColors.north : wallColors.south;
             } else {
-                // Fallback to solid color
-                const r = Math.floor(200 * brightness);
-                const g = Math.floor(170 * brightness);
-                const b = Math.floor(150 * brightness);
-                ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-                ctx.fillRect(i, wallTop, 1, wallHeight);
+                baseColor = rayAngle < Math.PI / 2 || rayAngle > Math.PI * 1.5 ? wallColors.east : wallColors.west;
             }
 
-            // Draw the floor and ceiling
-            const floorGradient = ctx.createLinearGradient(0, wallTop + wallHeight, 0, canvasHeight);
-            floorGradient.addColorStop(0, `rgba(50, 50, 50, 1)`);
-            floorGradient.addColorStop(1, `rgba(10, 10, 10, 1)`);
+            // Apply brightness to the color
+            const r = parseInt(baseColor.slice(1, 3), 16) * brightness;
+            const g = parseInt(baseColor.slice(3, 5), 16) * brightness;
+            const b = parseInt(baseColor.slice(5, 7), 16) * brightness;
+            const wallColor = `rgb(${Math.floor(r)}, ${Math.floor(g)}, ${Math.floor(b)})`;
 
-            const ceilingGradient = ctx.createLinearGradient(0, 0, 0, wallTop);
-            ceilingGradient.addColorStop(0, `rgba(10, 10, 10, 1)`);
-            ceilingGradient.addColorStop(1, `rgba(50, 50, 50, 1)`);
+            // Store data for batch rendering
+            wallStrips.push({
+                x: i * pixelWidth,
+                y: wallTop,
+                width: pixelWidth,
+                height: wallHeight,
+                color: wallColor
+            });
+        }
 
-            ctx.fillStyle = floorGradient;
-            ctx.fillRect(i, wallTop + wallHeight, 1, canvasHeight - (wallTop + wallHeight));
-
-            ctx.fillStyle = ceilingGradient;
-            ctx.fillRect(i, 0, 1, wallTop);
+        // Batch render all wall strips at once
+        for (const strip of wallStrips) {
+            ctx.fillStyle = strip.color;
+            ctx.fillRect(strip.x, strip.y, strip.width, strip.height);
         }
     }
 
@@ -649,67 +602,45 @@
 
     // Render the weapon
     function renderWeapon() {
-        const weaponWidth = canvasWidth * 0.4;
-        const weaponHeight = weaponWidth * 0.5;
-        const weaponX = (canvasWidth - weaponWidth) / 2;
-        const weaponY = canvasHeight - weaponHeight + 20;
+        // Modern FPS weapon placement (bottom right, not centered)
+        const weaponWidth = canvasWidth * 0.25;
+        const weaponHeight = weaponWidth * 0.6;
+        const weaponX = canvasWidth - weaponWidth - 20; // Position on right side
+        const weaponY = canvasHeight - weaponHeight - 10;
 
         // Apply bobbing effect to weapon
-        const weaponBobX = player.walking ? Math.sin(player.bobPhase) * 5 : 0;
-        const weaponBobY = player.walking ? Math.abs(Math.cos(player.bobPhase) * 5) : 0;
+        const weaponBobX = player.walking ? Math.sin(player.bobPhase) * 3 : 0;
+        const weaponBobY = player.walking ? Math.abs(Math.cos(player.bobPhase) * 3) : 0;
 
         // Apply recoil effect when shooting
-        const recoilY = player.shooting ? -20 : 0;
+        const recoilX = player.shooting ? -5 : 0;
+        const recoilY = player.shooting ? -15 : 0;
 
-        // Create weapon gradient
-        const weaponGradient = ctx.createLinearGradient(
-            weaponX + weaponBobX,
+        // Simple square weapon placeholder
+        ctx.fillStyle = '#333';
+        ctx.fillRect(
+            weaponX + weaponBobX + recoilX,
             weaponY + weaponBobY + recoilY,
-            weaponX + weaponBobX,
-            weaponY + weaponBobY + recoilY + weaponHeight
+            weaponWidth,
+            weaponHeight
         );
-        weaponGradient.addColorStop(0, '#444');
-        weaponGradient.addColorStop(0.5, '#222');
-        weaponGradient.addColorStop(1, '#111');
 
-        // Draw weapon with effects
-        ctx.fillStyle = weaponGradient;
-        ctx.fillRect(weaponX + weaponBobX, weaponY + weaponBobY + recoilY, weaponWidth, weaponHeight);
-
-        // Draw weapon barrel
+        // Barrel (simple rectangle)
         ctx.fillStyle = '#222';
         ctx.fillRect(
-            weaponX + weaponWidth * 0.2 + weaponBobX,
+            weaponX + weaponWidth * 0.25 + weaponBobX + recoilX,
             weaponY - 10 + weaponBobY + recoilY,
-            weaponWidth * 0.6,
-            30
-        );
-
-        // Add weapon details
-        ctx.fillStyle = '#555';
-        ctx.fillRect(
-            weaponX + weaponWidth * 0.3 + weaponBobX,
-            weaponY + 20 + weaponBobY + recoilY,
-            weaponWidth * 0.4,
-            weaponHeight * 0.3
+            weaponWidth * 0.5,
+            20
         );
 
         // Draw muzzle flash when shooting
         if (player.shooting) {
-            const flashSize = 30 + Math.random() * 10;
-            const flashX = weaponX + weaponWidth / 2 + weaponBobX;
+            const flashSize = 20 + Math.random() * 5;
+            const flashX = weaponX + weaponWidth * 0.5 + weaponBobX + recoilX;
             const flashY = weaponY - 10 + weaponBobY + recoilY;
 
-            // Create radial gradient for muzzle flash
-            const flashGradient = ctx.createRadialGradient(
-                flashX, flashY, 0,
-                flashX, flashY, flashSize
-            );
-            flashGradient.addColorStop(0, 'rgba(255, 255, 200, 0.9)');
-            flashGradient.addColorStop(0.5, 'rgba(255, 200, 50, 0.7)');
-            flashGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
-
-            ctx.fillStyle = flashGradient;
+            ctx.fillStyle = 'rgba(255, 200, 50, 0.8)';
             ctx.beginPath();
             ctx.arc(flashX, flashY, flashSize, 0, Math.PI * 2);
             ctx.fill();
@@ -718,22 +649,21 @@
         // Show reload indicator
         if (player.reloading) {
             const reloadProgress = 1 - (player.reloadTimer / WEAPON_COOLDOWN);
-            const indicatorWidth = weaponWidth * 0.8;
 
             ctx.fillStyle = '#444';
             ctx.fillRect(
-                weaponX + weaponWidth * 0.1 + weaponBobX,
-                weaponY + weaponHeight - 20 + weaponBobY + recoilY,
-                indicatorWidth,
-                10
+                weaponX + weaponBobX + recoilX,
+                weaponY + weaponHeight + 5 + weaponBobY + recoilY,
+                weaponWidth,
+                5
             );
 
             ctx.fillStyle = '#f70';
             ctx.fillRect(
-                weaponX + weaponWidth * 0.1 + weaponBobX,
-                weaponY + weaponHeight - 20 + weaponBobY + recoilY,
-                indicatorWidth * reloadProgress,
-                10
+                weaponX + weaponBobX + recoilX,
+                weaponY + weaponHeight + 5 + weaponBobY + recoilY,
+                weaponWidth * reloadProgress,
+                5
             );
         }
     }
