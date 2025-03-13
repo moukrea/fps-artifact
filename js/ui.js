@@ -707,7 +707,12 @@
             if (state === 'menu') {
                 // Reset the renderer to ensure clean canvas
                 if (MyApp.Renderer) {
-                    MyApp.Renderer.clear();
+                    try {
+                        MyApp.Renderer.clear();
+                        console.log('Canvas cleared by UI');
+                    } catch (error) {
+                        console.error('Error calling Renderer.clear():', error);
+                    }
                 }
             }
         } else {

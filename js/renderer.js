@@ -323,6 +323,33 @@
     }
 
     /**
+     * Clear the canvas
+     */
+    function clear() {
+        if (!_ctx) {
+            console.error('Renderer context not available');
+            return;
+        }
+        
+        try {
+            // Clear with a background color instead of clearRect to ensure something happens
+            _ctx.fillStyle = '#000000';
+            _ctx.fillRect(0, 0, _width, _height);
+            
+            // Reset z-buffer
+            if (_zbuffer) {
+                _zbuffer.fill(Infinity);
+            } else {
+                _zbuffer = new Array(_width).fill(Infinity);
+            }
+        } catch (error) {
+            console.error('Error clearing canvas:', error);
+        }
+    }
+
+    // Rendering
+
+    /**
      * Render the scene
      * @param {Object} map - Map data
      * @param {Array} entities - Game entities to render
@@ -493,30 +520,24 @@
      * @param {number} fogFactor - Fog factor (0-1)
      */
     function _drawTexturedColumn(x, start, end, texture, texX, texPos, step, shadingFactor, fogFactor) {
-        // Get texture context and data
         const texCtx = texture.getContext('2d');
         const texData = texCtx.getImageData(texX, 0, 1, _settings.textureSize).data;
 
-        // For each pixel in the column
         for (let y = start; y < end; y++) {
-            // Current texture Y coordinate
             const texY = Math.min(_settings.textureSize - 1, Math.floor(texPos) & (_settings.textureSize - 1));
             texPos += step;
 
-            // Get pixel color from texture
             const texIndex = texY * 4;
             let r = texData[texIndex];
             let g = texData[texIndex + 1];
             let b = texData[texIndex + 2];
 
-            // Apply shading
             if (_settings.lightingEnabled) {
                 r = Math.floor(r * shadingFactor);
                 g = Math.floor(g * shadingFactor);
                 b = Math.floor(b * shadingFactor);
             }
 
-            // Apply fog
             if (_settings.fogEnabled && fogFactor > 0) {
                 const fogColor = _hexToRgb(_settings.fogColor);
                 r = Math.floor(r * (1 - fogFactor) + fogColor.r * fogFactor);
@@ -524,7 +545,6 @@
                 b = Math.floor(b * (1 - fogFactor) + fogColor.b * fogFactor);
             }
 
-            // Draw pixel
             _ctx.fillStyle = `rgb(${r},${g},${b})`;
             _ctx.fillRect(x, y, 1, 1);
         }
@@ -536,10 +556,8 @@
      * @returns {Object} RGB color object
      */
     function _hexToRgb(hex) {
-        // Remove # if present
         hex = hex.replace(/^#/, '');
 
-        // Parse components
         const bigint = parseInt(hex, 16);
         const r = (bigint >> 16) & 255;
         const g = (bigint >> 8) & 255;
@@ -555,7 +573,6 @@
     function _drawSprites(entities) {
         if (!entities || entities.length === 0) return;
 
-        // Sort sprites by distance (far to near)
         const sortedEntities = [...entities].filter(entity => entity.visible)
             .sort((a, b) => {
                 const distA = a.position.distanceToSquared(_camera.position);
@@ -563,7 +580,6 @@
                 return distB - distA; // Far to near
             });
 
-        // Transform and draw each sprite
         for (const entity of sortedEntities) {
             _drawSprite(entity);
         }
@@ -574,7 +590,6 @@
      * @param {Object} entity - Entity to draw
      */
     function _drawSprite(entity) {
-        // Vector from camera to sprite
         const spritePos = new Vector3().copy(entity.position).subtract(_camera.position);
 
         // Transform sprite with the inverse camera matrix
@@ -585,58 +600,44 @@
         const transformX = invDet * (_camera.direction.z * spritePos.x - _camera.direction.x * spritePos.z);
         const transformY = invDet * (-_camera.planeDistance * spritePos.x + _camera.planeDistance * spritePos.z);
 
-        // Calculate sprite screen position
         const spriteScreenX = Math.floor((_halfWidth) * (1 + transformX / transformY));
 
-        // Calculate sprite height and width on screen
         const spriteSize = Math.abs(Math.floor(_height / transformY));
         const halfSpriteSize = spriteSize / 2;
 
-        // Calculate drawing bounds
         const drawStartY = Math.max(0, Math.floor(_halfHeight - halfSpriteSize));
         const drawEndY = Math.min(_height, Math.floor(_halfHeight + halfSpriteSize));
 
         const drawStartX = Math.max(0, Math.floor(spriteScreenX - halfSpriteSize));
         const drawEndX = Math.min(_width, Math.floor(spriteScreenX + halfSpriteSize));
 
-        // Get the sprite texture
         const spriteTexture = _textures.sprites[entity.textureId % _textures.sprites.length];
 
         // Draw the sprite
         for (let x = drawStartX; x < drawEndX; x++) {
-            // Check if sprite is in front of wall
             if (transformY > 0 && transformY < _zbuffer[x]) {
-                // Get texture X coordinate
                 const texX = Math.floor((x - (spriteScreenX - halfSpriteSize)) * _settings.textureSize / spriteSize);
 
-                // Draw column if texX is valid
                 if (texX >= 0 && texX < _settings.textureSize) {
-                    // Get texture data
                     const texCtx = spriteTexture.getContext('2d');
                     const texData = texCtx.getImageData(texX, 0, 1, _settings.textureSize).data;
 
-                    // Draw the column
                     for (let y = drawStartY; y < drawEndY; y++) {
-                        // Calculate texture Y coordinate
                         const texY = Math.floor((y - drawStartY) * _settings.textureSize / spriteSize);
 
-                        // Get pixel color from texture
                         const texIndex = texY * 4;
                         const r = texData[texIndex];
                         const g = texData[texIndex + 1];
                         const b = texData[texIndex + 2];
                         const a = texData[texIndex + 3];
 
-                        // Only draw visible pixels (alpha > 0)
                         if (a > 0) {
-                            // Apply fog based on distance
                             let fogFactor = 0;
                             if (_settings.fogEnabled) {
                                 const distance = entity.position.distanceTo(_camera.position);
                                 fogFactor = Math.min(1, distance / _settings.fogDistance);
                             }
 
-                            // Apply fog
                             let finalR = r, finalG = g, finalB = b;
                             if (_settings.fogEnabled && fogFactor > 0) {
                                 const fogColor = _hexToRgb(_settings.fogColor);
@@ -659,7 +660,6 @@
      * @param {Object} weapon - Weapon data
      */
     function _drawWeapon(weapon) {
-        // Get weapon texture
         const weaponTexture = _textures.weapons[weapon.textureId % _textures.weapons.length];
         const weaponWidth = weaponTexture.width;
         const weaponHeight = weaponTexture.height;
@@ -694,56 +694,68 @@
         }
     }
 
-    // Define the public API early to avoid reference issues
-    MyApp.Renderer = {
-        init: function(canvas, options) {
-            return init(canvas, options);
-        },
-        resize: function() {
-            return resize();
-        },
-        render: function(map, entities, player) {
-            return render(map, entities, player);
-        },
-        setCamera: function(position, pitch, yaw) {
-            try {
-                if (!position) {
-                    console.warn('Invalid camera position provided');
-                    return;
-                }
-                
-                _camera.position.copy(position);
-                _camera.pitch = pitch || 0;
-                _camera.yaw = yaw || 0;
-                
-                // Update camera direction vector
-                _camera.direction = Math3D.eulerToDirection(_camera.pitch, _camera.yaw);
-                
-                // Log successful camera update
-                console.log('Camera position updated:', 
-                    position.x.toFixed(2), 
-                    position.y.toFixed(2), 
-                    position.z.toFixed(2)
-                );
-            } catch (error) {
-                console.error('Error setting camera:', error);
-            }
-        },
-        clear: function() {
-            return clear();
-        }
-    };
+    // Define key functions first before exporting them
+    
+    /**
+     * Initialize the renderer
+     * @param {HTMLCanvasElement} canvas - Canvas element
+     * @param {Object} options - Optional configuration
+     */
+    function init(canvas, options = {}) {
+        _canvas = canvas;
+        _ctx = canvas.getContext('2d');
+
+        // Apply options
+        if (options.fov) _fov = options.fov;
+        if (options.settings) Object.assign(_settings, options.settings);
+
+        // Calculate FOV in radians
+        _fovRad = Utils.degreesToRadians(_fov);
+
+        // Initial resize
+        resize();
+
+        // Load default textures and placeholders
+        _loadPlaceholderTextures();
+
+        console.log('Renderer initialized');
+    }
 
     /**
-     * Ensure setCamera is definitely defined
+     * Set camera position and orientation
      * @param {Vector3} position - Camera position
      * @param {number} pitch - Camera pitch in radians
      * @param {number} yaw - Camera yaw in radians
      */
     function setCamera(position, pitch, yaw) {
-        return MyApp.Renderer.setCamera(position, pitch, yaw);
+        try {
+            if (!position) {
+                console.warn('Invalid camera position provided');
+                return;
+            }
+            
+            _camera.position.copy(position);
+            _camera.pitch = pitch || 0;
+            _camera.yaw = yaw || 0;
+            
+            // Update camera direction vector
+            _camera.direction = Math3D.eulerToDirection(_camera.pitch, _camera.yaw);
+        } catch (error) {
+            console.error('Error setting camera:', error);
+        }
     }
 
-    // No need to export again, we already did it
-    console.log('Renderer module loaded with functions:', Object.keys(MyApp.Renderer).join(', '));
+    const rendererAPI = {
+        init: init,
+        setCamera: setCamera,
+        resize: resize,
+        render: render,
+        clear: clear
+    };
+
+    console.log('Renderer functions defined:', Object.keys(rendererAPI).join(', '));
+
+    MyApp.Renderer = rendererAPI;
+
+    console.log('Renderer module loaded successfully');
 })(window.MyApp || (window.MyApp = {}));

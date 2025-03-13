@@ -109,26 +109,50 @@
         loadingElement.style.display = 'none';
       };
 
+      // Try local files first, then fall back to GitHub if needed
+      const loadResource = async (localPath, remotePath) => {
+        try {
+          // Try local file first
+          const response = await fetch(localPath);
+          if (response.ok) {
+            return await response.text();
+          }
+          
+          // Fall back to remote if local fails
+          console.log(`Local file not found, trying remote: ${remotePath}`);
+          const remoteResponse = await fetch(remotePath);
+          if (!remoteResponse.ok) {
+            throw new Error(`Failed to load from ${remotePath}: ${remoteResponse.status}`);
+          }
+          return await remoteResponse.text();
+        } catch (err) {
+          console.error(`Error loading resource: ${err.message}`);
+          showError(`Failed to load resource: ${err.message}`);
+          return null;
+        }
+      };
+
       // Base repository URL
       const baseUrl = 'https://raw.githubusercontent.com/moukrea/fps-artifact/refs/heads/main';
+      const localBaseUrl = '.';
 
       // List of CSS files to load
       const cssFiles = [
-        `${baseUrl}/css/styles.css`
+        { local: `${localBaseUrl}/css/styles.css`, remote: `${baseUrl}/css/styles.css` }
       ];
 
       // List of scripts to load in order
       const scripts = [
-        `${baseUrl}/js/utils.js`,
-        `${baseUrl}/js/math3d.js`,
-        `${baseUrl}/js/input.js`,
-        `${baseUrl}/js/renderer.js`,
-        `${baseUrl}/js/map.js`,
-        `${baseUrl}/js/player.js`,
-        `${baseUrl}/js/enemy.js`,
-        `${baseUrl}/js/ui.js`,
-        `${baseUrl}/js/game.js`,
-        `${baseUrl}/js/main.js`
+        { local: `${localBaseUrl}/js/utils.js`, remote: `${baseUrl}/js/utils.js` },
+        { local: `${localBaseUrl}/js/math3d.js`, remote: `${baseUrl}/js/math3d.js` },
+        { local: `${localBaseUrl}/js/input.js`, remote: `${baseUrl}/js/input.js` },
+        { local: `${localBaseUrl}/js/renderer.js`, remote: `${baseUrl}/js/renderer.js` },
+        { local: `${localBaseUrl}/js/map.js`, remote: `${baseUrl}/js/map.js` },
+        { local: `${localBaseUrl}/js/player.js`, remote: `${baseUrl}/js/player.js` },
+        { local: `${localBaseUrl}/js/enemy.js`, remote: `${baseUrl}/js/enemy.js` },
+        { local: `${localBaseUrl}/js/ui.js`, remote: `${baseUrl}/js/ui.js` },
+        { local: `${localBaseUrl}/js/game.js`, remote: `${baseUrl}/js/game.js` },
+        { local: `${localBaseUrl}/js/main.js`, remote: `${baseUrl}/js/main.js` }
       ];
 
       // Load and execute all resources
@@ -138,14 +162,19 @@
           window.MyApp = {};
 
           // First load all CSS files
-          for (const cssUrl of cssFiles) {
-            await loadCSS(cssUrl);
+          for (const cssFile of cssFiles) {
+            const cssContent = await loadResource(cssFile.local, cssFile.remote);
+            if (cssContent) {
+              const styleElement = document.createElement('style');
+              styleElement.textContent = cssContent;
+              document.head.appendChild(styleElement);
+            }
           }
 
           // Then load scripts in sequence
-          for (const scriptUrl of scripts) {
-            console.log(`Loading script: ${scriptUrl}`);
-            const scriptCode = await loadScript(scriptUrl);
+          for (const script of scripts) {
+            console.log(`Loading script: ${script.local}`);
+            const scriptCode = await loadResource(script.local, script.remote);
             if (!scriptCode) {
               return; // Stop if any script fails to load
             }
@@ -155,9 +184,9 @@
               // Create a function from the code to execute it in the global scope
               const scriptFunction = new Function('MyApp', scriptCode);
               scriptFunction(window.MyApp);
-              console.log(`Successfully loaded: ${scriptUrl}`);
+              console.log(`Successfully loaded: ${script.local}`);
             } catch (execError) {
-              showError(`Error executing ${scriptUrl}: ${execError.message}`);
+              showError(`Error executing ${script.local}: ${execError.message}`);
               console.error(execError);
               return;
             }
