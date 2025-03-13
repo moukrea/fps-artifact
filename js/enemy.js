@@ -390,7 +390,7 @@
             this.canHearPlayer = false;
 
             // Skip if no player or player is dead
-            if (!player || player.isDead()) {
+            if (!player || (player.state === 'dead')) {
                 return;
             }
 
@@ -538,7 +538,9 @@
                 // Can attack
                 if (player && this.position.distanceTo(player.position) <= this.attackRange) {
                     // Deal damage to player
-                    player.damage(this.damage, this.position);
+                    if (typeof MyApp.Player.damage === 'function') {
+                        MyApp.Player.damage(this.damage, this.position);
+                    }
                     this.lastAttackTime = now;
 
                     // Randomize cooldown a bit

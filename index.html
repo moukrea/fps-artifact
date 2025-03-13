@@ -120,12 +120,12 @@
       // List of scripts to load in order
       const scripts = [
         `${baseUrl}/js/utils.js`,
-        `${baseUrl}/js/input.js`,
         `${baseUrl}/js/math3d.js`,
+        `${baseUrl}/js/input.js`,
         `${baseUrl}/js/renderer.js`,
         `${baseUrl}/js/map.js`,
-        `${baseUrl}/js/enemy.js`,
         `${baseUrl}/js/player.js`,
+        `${baseUrl}/js/enemy.js`,
         `${baseUrl}/js/ui.js`,
         `${baseUrl}/js/game.js`,
         `${baseUrl}/js/main.js`
@@ -144,6 +144,7 @@
 
           // Then load scripts in sequence
           for (const scriptUrl of scripts) {
+            console.log(`Loading script: ${scriptUrl}`);
             const scriptCode = await loadScript(scriptUrl);
             if (!scriptCode) {
               return; // Stop if any script fails to load
@@ -154,6 +155,7 @@
               // Create a function from the code to execute it in the global scope
               const scriptFunction = new Function('MyApp', scriptCode);
               scriptFunction(window.MyApp);
+              console.log(`Successfully loaded: ${scriptUrl}`);
             } catch (execError) {
               showError(`Error executing ${scriptUrl}: ${execError.message}`);
               console.error(execError);

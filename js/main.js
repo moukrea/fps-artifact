@@ -146,24 +146,113 @@
         // Start measuring initialization time
         const startTime = performance.now();
 
-        // Initialize all modules in order
+        // Make sure all necessary modules are loaded
+        if (!MyApp.Utils) {
+            console.error('Utils module not loaded');
+            return;
+        }
 
-        // First, initialize the core Game module which will control everything
+        if (!MyApp.Math3D) {
+            console.error('Math3D module not loaded');
+            return;
+        }
+
+        // Initialize modules in order of dependency
+
+        // Input system should be initialized first
+        if (MyApp.Input) {
+            MyApp.Input.init(canvas);
+        } else {
+            console.error('Input module not loaded');
+            return;
+        }
+
+        // Initialize renderer
+        if (MyApp.Renderer) {
+            MyApp.Renderer.init(canvas, {
+                fov: CONFIG.renderer.fov,
+                settings: CONFIG.renderer.settings
+            });
+        } else {
+            console.error('Renderer module not loaded');
+            return;
+        }
+
+        // Initialize map
+        if (MyApp.Map) {
+            MyApp.Map.init({
+                mapSize: CONFIG.map.mapSize,
+                seed: CONFIG.map.seed,
+                settings: CONFIG.map.settings
+            });
+        } else {
+            console.error('Map module not loaded');
+            return;
+        }
+
+        // Initialize UI
+        if (MyApp.UI) {
+            MyApp.UI.init(canvas);
+        } else {
+            console.error('UI module not loaded');
+            return;
+        }
+
+        // Initialize player
+        if (MyApp.Player) {
+            let spawnPos = { x: 2, y: 0, z: 2 };
+            if (MyApp.Map) {
+                const mapSpawn = MyApp.Map.getRandomFreeSpace(true);
+                if (mapSpawn) {
+                    spawnPos = mapSpawn;
+                }
+            }
+
+            MyApp.Player.init({
+                position: new MyApp.Math3D.Vector3(spawnPos.x, spawnPos.y, spawnPos.z),
+                moveSpeed: CONFIG.player.moveSpeed,
+                turnSpeed: CONFIG.player.turnSpeed,
+                health: CONFIG.player.health,
+                weapon: CONFIG.player.weapon
+            });
+        } else {
+            console.error('Player module not loaded');
+            return;
+        }
+
+        // Initialize enemy system
+        if (MyApp.Enemy) {
+            MyApp.Enemy.init({
+                maxEnemies: CONFIG.enemies.maxEnemies,
+                spawnInterval: CONFIG.enemies.spawnInterval,
+                difficulty: CONFIG.enemies.difficulty
+            });
+        } else {
+            console.error('Enemy module not loaded');
+            return;
+        }
+
+        // Last, initialize the Game module which will control everything
         if (MyApp.Game) {
             MyApp.Game.init(canvas, {
                 settings: CONFIG.game
             });
 
-            // Log startup messages with the Game module
+            // Set up game event handlers
             MyApp.Game.on('gameStart', () => {
                 console.log('Game started');
+            });
+
+            MyApp.Game.on('gameStop', () => {
+                console.log('Game stopped');
             });
 
             MyApp.Game.on('levelAdvance', (level) => {
                 console.log(`Advanced to level ${level}`);
             });
         } else {
-            console.error('Game module not available');
+            console.error('Game module not loaded');
+            return;
         }
 
         // Log initialization time
@@ -171,7 +260,7 @@
         console.log(`Game initialized in ${initTime.toFixed(0)}ms`);
 
         // Force an initial render of the menu
-        if (MyApp.UI && MyApp.UI.getGameState() === 'menu') {
+        if (MyApp.UI) {
             // Get the canvas 2D context
             const ctx = canvas.getContext('2d');
 

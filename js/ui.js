@@ -58,6 +58,7 @@
     function init(canvas, options = {}) {
         // Store canvas reference (but will use context from renderer)
         _canvas = canvas;
+        _ctx = canvas.getContext('2d');
 
         // Apply options
         if (options.settings) Object.assign(_settings, options.settings);
@@ -111,8 +112,10 @@
             if (key === 'escape') {
                 if (_gameState === 'playing') {
                     _gameState = 'paused';
+                    if (MyApp.Game) MyApp.Game.pauseGame();
                 } else if (_gameState === 'paused') {
                     _gameState = 'playing';
+                    if (MyApp.Game) MyApp.Game.resumeGame();
                 }
             }
         });
@@ -225,14 +228,20 @@
             case 'showOptions':
                 console.log('Options menu selected (not implemented)');
                 // TODO: Show options menu
+                // For now, show a message
+                addMessage('Options menu not implemented yet', '#ffff00', 3000);
                 break;
             case 'showControls':
                 console.log('Controls selected (not implemented)');
                 // TODO: Show controls screen
+                // For now, show a message
+                addMessage('Controls info not implemented yet', '#ffff00', 3000);
                 break;
             case 'showCredits':
                 console.log('Credits selected (not implemented)');
                 // TODO: Show credits
+                // For now, show a message
+                addMessage('Credits not implemented yet', '#ffff00', 3000);
                 break;
             default:
                 console.warn('Unknown menu action:', selected.action);
@@ -321,6 +330,9 @@
         _ctx.font = '16px Arial';
         _ctx.fillText('Use arrow keys or WASD to navigate, ENTER to select', _width / 2, _height - 100);
         _ctx.fillText('Press ESC to pause/unpause the game', _width / 2, _height - 70);
+
+        // Draw messages
+        _renderMessages();
     }
 
     /**

@@ -179,6 +179,14 @@
                     startGame();
                 }
             });
+
+            // Add menu click handler
+            MyApp.Input.on('menuClick', (x, y) => {
+                if (MyApp.UI && MyApp.UI.getGameState() === 'menu') {
+                    // This will be handled by the UI module
+                    console.log('Menu click detected in game module');
+                }
+            });
         }
     }
 
@@ -257,7 +265,12 @@
         // After starting the game, request pointer lock
         if (_canvas && document.pointerLockElement !== _canvas) {
             console.log('Requesting pointer lock...');
-            _canvas.requestPointerLock();
+            _canvas.requestPointerLock = _canvas.requestPointerLock ||
+                _canvas.mozRequestPointerLock ||
+                _canvas.webkitRequestPointerLock;
+            if (_canvas.requestPointerLock) {
+                _canvas.requestPointerLock();
+            }
         }
 
         console.log('Game started');
@@ -363,8 +376,10 @@
             MyApp.Player.update(deltaTime, MyApp.Map, [..._itemEntities]);
         }
 
-        // Update enemies
+        // Update enemies - pass the complete Player module instead of just the state
         if (MyApp.Enemy) {
+            // Pass the player's state object from getState() 
+            // This was modified in enemy.js to check player.state instead of player.isDead()
             MyApp.Enemy.update(deltaTime, MyApp.Player.getState(), MyApp.Map);
         }
 
